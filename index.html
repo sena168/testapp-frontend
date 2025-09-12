@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Counter App - Infinite Scroll</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: white;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+        }
+        .main-container {
+            background-color: #f9f9f9;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            padding: 20px;
+            width: 400px;
+            text-align: center;
+        }
+        .button-container {
+            margin-bottom: 20px;
+        }
+        .press-button, .random-button {
+            background-color: #ff69b4;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            transition: background-color 0.3s;
+        }
+        .press-button:hover, .random-button:hover {
+            background-color: #ff1493;
+        }
+        .counter {
+            font-size: 24px;
+            margin: 20px 0;
+            font-weight: bold;
+            color: #333;
+        }
+        .reset-button {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .reset-button:hover {
+            background-color: #c82333;
+        }
+        .add-to-list-button {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 5px;
+            transition: background-color 0.3s;
+        }
+        .add-to-list-button:hover {
+            background-color: #218838;
+        }
+        .bulk-add-button {
+            background-color: #6f42c1;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            font-size: 14px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            transition: background-color 0.3s;
+        }
+        .bulk-add-button:hover {
+            background-color: #5a32a3;
+        }
+        .status {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #666;
+        }
+        .list-container {
+            margin-top: 30px;
+            text-align: left;
+        }
+        .list-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-align: center;
+            color: #333;
+        }
+        .list-stats {
+            font-size: 12px;
+            color: #888;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .number-list {
+            background-color: white;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+            position: relative;
+        }
+        .list-item {
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+            font-size: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .list-item:last-child {
+            border-bottom: none;
+        }
+        .item-number {
+            font-weight: bold;
+            color: #333;
+        }
+        .item-timestamp {
+            font-size: 12px;
+            color: #999;
+        }
+        .loading-indicator {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-style: italic;
+            display: none;
+        }
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .instructions {
+            font-size: 12px;
+            color: #888;
+            margin-top: 10px;
+            text-align: center;
+        }
+        .scroll-hint {
+            font-size: 11px;
+            color: #aaa;
+            text-align: center;
+            margin-top: 5px;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div class="button-container">
+            <button class="press-button" onclick="incrementCounter()">Press Me!</button>
+            <button class="random-button" onclick="generateRandom()">Random (1-100)</button>
+        </div>
+        
+        <div class="counter" id="counter">Loading...</div>
+        
+        <button class="add-to-list-button" onclick="addToHistory()">Add to List</button>
+        <button class="reset-button" onclick="resetCounter()">Reset</button>
+        
+        <div style="margin-top: 10px;">
+            <button class="bulk-add-button" onclick="bulkAddNumbers(10)">Add 10 Random</button>
+            <button class="bulk-add-button" onclick="bulkAddNumbers(50)">Add 50 Random</button>
+            <button class="bulk-add-button" onclick="bulkAddNumbers(100)">Add 100 Random</button>
+        </div>
+        
+        <div class="status" id="status"></div>
+        
+        <div class="instructions">
+            Click "Add to List" or press Enter to add the current number to the list below
+        </div>
+        
+        <div class="list-container">
+            <div class="list-title">Number History (Infinite Scroll)</div>
+            <div class="list-stats" id="listStats">Total items: 0</div>
+            <div class="number-list" id="numberList">
+                <!-- Numbers will be added here -->
+                <div class="loading-indicator" id="loadingIndicator">
+                    <div class="loading-spinner"></div>
+                    Loading more items...
+                </div>
+            </div>
+            <div class="scroll-hint">Scroll down to see more items as you add them</div>
+        </div>
+    </div>
+
+    <script>
+        let currentCount = 0;
+        let numberHistory = [];
+        let displayedItems = 0;
+        let itemsPerLoad = 20;
+        let isLoading = false;
+        let totalItemsAdded = 0;
+
+        // Backend API URL - change this for production deployment
+        const API_BASE_URL = window.location.hostname === 'localhost' ? 'http://localhost:8888' : 'https://your-backend-url.onrender.com';
+
+        // Load initial counter value
+        async function loadCounter() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/counter`);
+                const data = await response.json();
+                currentCount = data.count;
+                document.getElementById('counter').textContent = currentCount;
+                document.getElementById('status').textContent = 'Counter loaded successfully';
+            } catch (error) {
+                console.error('Error loading counter:', error);
+                document.getElementById('counter').textContent = '0';
+                document.getElementById('status').textContent = 'Error loading counter';
+            }
+        }
+
+        // Increment counter
+        async function incrementCounter() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/counter/increment`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                currentCount = data.count;
+                document.getElementById('counter').textContent = currentCount;
+                document.getElementById('status').textContent = 'Counter incremented';
+            } catch (error) {
+                console.error('Error incrementing counter:', error);
+                document.getElementById('status').textContent = 'Error incrementing counter';
+            }
+        }
+
+        // Generate random number
+        function generateRandom() {
+            const randomNum = Math.floor(Math.random() * 100) + 1;
+            currentCount = randomNum;
+            document.getElementById('counter').textContent = currentCount;
+            document.getElementById('status').textContent = 'Random number generated';
+        }
+
+        // Reset counter
+        async function resetCounter() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/counter/reset`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                currentCount = data.count;
+                document.getElementById('counter').textContent = currentCount;
+                document.getElementById('status').textContent = 'Counter reset';
+            } catch (error) {
+                console.error('Error resetting counter:', error);
+                document.getElementById('status').textContent = 'Error resetting counter';
+            }
+        }
+
+        // Add current number to history list
+        function addToHistory() {
+            const timestamp = new Date().toLocaleTimeString();
+            totalItemsAdded++;
+            
+            numberHistory.push({
+                number: currentCount,
+                timestamp: timestamp,
+                id: totalItemsAdded
+            });
+            
+            updateHistoryDisplay();
+            updateStats();
+            document.getElementById('status').textContent = `Added ${currentCount} to history (Total: ${totalItemsAdded})`;
+        }
+
+        // Bulk add random numbers for testing infinite scroll
+        function bulkAddNumbers(count) {
+            document.getElementById('status').textContent = `Adding ${count} random numbers...`;
+            
+            for (let i = 0; i < count; i++) {
+                const randomNum = Math.floor(Math.random() * 1000) + 1;
+                const timestamp = new Date().toLocaleTimeString();
+                totalItemsAdded++;
+                
+                numberHistory.push({
+                    number: randomNum,
+                    timestamp: timestamp,
+                    id: totalItemsAdded
+                });
+            }
+            
+            updateHistoryDisplay();
+            updateStats();
+            document.getElementById('status').textContent = `Added ${count} random numbers (Total: ${totalItemsAdded})`;
+        }
+
+        // Update stats display
+        function updateStats() {
+            document.getElementById('listStats').textContent = `Total items: ${totalItemsAdded} | Displayed: ${Math.min(displayedItems, totalItemsAdded)}`;
+        }
+
+        // Update the history display with infinite scroll
+        function updateHistoryDisplay() {
+            const listElement = document.getElementById('numberList');
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            
+            // Calculate how many items to show
+            const itemsToShow = Math.min(displayedItems + itemsPerLoad, numberHistory.length);
+            
+            // Clear existing items (except loading indicator)
+            const existingItems = listElement.querySelectorAll('.list-item');
+            existingItems.forEach(item => item.remove());
+            
+            if (numberHistory.length === 0) {
+                const emptyItem = document.createElement('div');
+                emptyItem.className = 'list-item';
+                emptyItem.innerHTML = '<span style="color: #999; font-style: italic;">No numbers added yet</span>';
+                listElement.insertBefore(emptyItem, loadingIndicator);
+                displayedItems = 0;
+                return;
+            }
+            
+            // Show items from newest to oldest
+            const itemsToDisplay = numberHistory.slice(-itemsToShow).reverse();
+            
+            itemsToDisplay.forEach((item, index) => {
+                const listItem = document.createElement('div');
+                listItem.className = 'list-item';
+                listItem.innerHTML = `
+                    <span class="item-number">#${item.id}: ${item.number}</span>
+                    <span class="item-timestamp">${item.timestamp}</span>
+                `;
+                listElement.insertBefore(listItem, loadingIndicator);
+            });
+            
+            displayedItems = itemsToShow;
+        }
+
+        // Load more items when scrolling
+        function loadMoreItems() {
+            if (isLoading || displayedItems >= numberHistory.length) {
+                return;
+            }
+            
+            isLoading = true;
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            loadingIndicator.style.display = 'block';
+            
+            // Simulate loading delay
+            setTimeout(() => {
+                updateHistoryDisplay();
+                updateStats();
+                loadingIndicator.style.display = 'none';
+                isLoading = false;
+                
+                document.getElementById('status').textContent = `Loaded more items (Showing ${displayedItems}/${totalItemsAdded})`;
+            }, 500);
+        }
+
+        // Handle scroll events for infinite scrolling
+        function handleScroll(event) {
+            const element = event.target;
+            const threshold = 50; // pixels from bottom
+            
+            if (element.scrollTop + element.clientHeight >= element.scrollHeight - threshold) {
+                loadMoreItems();
+            }
+        }
+
+        // Handle Enter key press
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                addToHistory();
+            }
+        });
+
+        // Initialize the app
+        window.addEventListener('load', function() {
+            loadCounter();
+            updateHistoryDisplay();
+            updateStats();
+            
+            // Add scroll event listener to the number list
+            const numberList = document.getElementById('numberList');
+            numberList.addEventListener('scroll', handleScroll);
+            
+            // Initial load of items
+            displayedItems = 0;
+        });
+    </script>
+</body>
+</html>
